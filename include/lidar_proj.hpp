@@ -13,8 +13,6 @@
 
 #include "common.h"
 
-namespace RILO{
-
 template<typename PointT>
 class ProjLidar2Img{
 public:
@@ -119,4 +117,3 @@ private:
     cv::Mat normalImg;
 };
 
-} //RILO
