@@ -37,64 +37,60 @@ inline void keypointConverter(std::vector<cv::Point2f>& points_in, std::vector<c
     }
 }
 
-// void pubMatchedImages(const ros::Publisher* this_pub,
-//                       const double time_stamp,
-//                       const bool draw_lines,
-//                       const int circle_size,
-//                       const cv::Scalar line_color,
-//                       const int index_new, const int index_old, 
-//                       const cv::Mat& image_new, const cv::Mat& image_old,
-//                       const vector<cv::Point2f>& features_new, const vector<cv::Point2f>& features_old)
-// {
-//     if (this_pub->getNumSubscribers() == 0)
-//         return;
+void showMatchedImages(const std::string show_name,                  
+                      const double time_stamp,
+                      const bool draw_lines,
+                      const int circle_size,
+                      const cv::Scalar line_color,
+                      const int index_new, const int index_old, 
+                      const cv::Mat& image_new, const cv::Mat& image_old,
+                      const vector<cv::Point2f>& features_new, const vector<cv::Point2f>& features_old)
+{
+    int gap = 1;
+    cv::Mat gap_image(gap, image_new.size().width, CV_8UC1, cv::Scalar(255, 255, 255));
+    cv::Mat gray_img, color_img;
+    cv::Mat old_img = image_old;
+    cv::vconcat(image_new, gap_image, gap_image);
+    cv::vconcat(gap_image, old_img, gray_img);
+    cv::cvtColor(gray_img, color_img, CV_GRAY2RGB);
+    // plot features in current frame
+    for(int i = 0; i< (int)features_new.size(); i++)
+    {
+        cv::Point2f cur_pt = features_new[i] * MATCH_IMAGE_SCALE;
+        cv::circle(color_img, cur_pt, circle_size*MATCH_IMAGE_SCALE, line_color, MATCH_IMAGE_SCALE*2);
+    }
+    // plot features in previous frame
+    for(int i = 0; i< (int)features_old.size(); i++)
+    {
+        cv::Point2f old_pt = features_old[i] * MATCH_IMAGE_SCALE;
+        old_pt.y += image_new.size().height + gap;
+        cv::circle(color_img, old_pt, circle_size*MATCH_IMAGE_SCALE, line_color, MATCH_IMAGE_SCALE*2);
+    }
+    // plot lines connecting features
+    if (draw_lines)
+    {
+        for (int i = 0; i< (int)features_new.size(); i++)
+        {
+            cv::Point2f old_pt = features_old[i] * MATCH_IMAGE_SCALE;
+            old_pt.y += image_new.size().height + gap;
+            cv::line(color_img, features_new[i] * MATCH_IMAGE_SCALE, old_pt, line_color, MATCH_IMAGE_SCALE*2, 8, 0);
+        }
+    }
+    // plot text
+    int text_height_pos = 20;
+    double text_scale = 0.8 * MATCH_IMAGE_SCALE;
+    int text_thickness = 2 * MATCH_IMAGE_SCALE;
+    cv::Scalar text_color = cv::Scalar(255,0,255);
+    cv::putText(color_img, "Frame: " + to_string(index_new), 
+                cv::Point2f(5, text_height_pos),
+                CV_FONT_HERSHEY_SIMPLEX,  text_scale, text_color, text_thickness);
+    cv::putText(color_img, "Frame: " + to_string(index_old),
+                cv::Point2f(5, text_height_pos + image_new.size().height + gap),
+                CV_FONT_HERSHEY_SIMPLEX,  text_scale, text_color, text_thickness);
 
-//     int gap = 1;
-//     cv::Mat gap_image(gap, image_new.size().width, CV_8UC1, cv::Scalar(255, 255, 255));
-//     cv::Mat gray_img, color_img;
-//     cv::Mat old_img = image_old;
-//     cv::vconcat(image_new, gap_image, gap_image);
-//     cv::vconcat(gap_image, old_img, gray_img);
-//     cv::cvtColor(gray_img, color_img, CV_GRAY2RGB);
-//     // plot features in current frame
-//     for(int i = 0; i< (int)features_new.size(); i++)
-//     {
-//         cv::Point2f cur_pt = features_new[i] * MATCH_IMAGE_SCALE;
-//         cv::circle(color_img, cur_pt, circle_size*MATCH_IMAGE_SCALE, line_color, MATCH_IMAGE_SCALE*2);
-//     }
-//     // plot features in previous frame
-//     for(int i = 0; i< (int)features_old.size(); i++)
-//     {
-//         cv::Point2f old_pt = features_old[i] * MATCH_IMAGE_SCALE;
-//         old_pt.y += image_new.size().height + gap;
-//         cv::circle(color_img, old_pt, circle_size*MATCH_IMAGE_SCALE, line_color, MATCH_IMAGE_SCALE*2);
-//     }
-//     // plot lines connecting features
-//     if (draw_lines)
-//     {
-//         for (int i = 0; i< (int)features_new.size(); i++)
-//         {
-//             cv::Point2f old_pt = features_old[i] * MATCH_IMAGE_SCALE;
-//             old_pt.y += image_new.size().height + gap;
-//             cv::line(color_img, features_new[i] * MATCH_IMAGE_SCALE, old_pt, line_color, MATCH_IMAGE_SCALE*2, 8, 0);
-//         }
-//     }
-//     // plot text
-//     // int text_height_pos = 20;
-//     // double text_scale = 0.8 * MATCH_IMAGE_SCALE;
-//     // int text_thickness = 2 * MATCH_IMAGE_SCALE;
-//     // cv::Scalar text_color = cv::Scalar(255,0,255);
-//     // cv::putText(color_img, "Frame: " + to_string(index_new), 
-//     //             cv::Point2f(5, text_height_pos),
-//     //             CV_FONT_HERSHEY_SIMPLEX,  text_scale, text_color, text_thickness);
-//     // cv::putText(color_img, "Frame: " + to_string(index_old),
-//     //             cv::Point2f(5, text_height_pos + image_new.size().height + gap),
-//     //             CV_FONT_HERSHEY_SIMPLEX,  text_scale, text_color, text_thickness);
-//     // publish matched image
-//     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", color_img).toImageMsg();
-//     msg->header.stamp = ros::Time(time_stamp);
-//     this_pub->publish(msg);
-// }
+    cv::imshow(show_name, color_img);
+    cv::waitKey(1);
+}
 
 
 class KeyFrame
@@ -107,7 +103,10 @@ public:
     cv::Mat image;
     cv::Mat image_intensity;
     cv::Mat thumbnail;
-    pcl::PointCloud<PointType>::Ptr cloud;
+    pcl::PointCloud<PointCloudXYZIRCR>::Ptr cloud;
+
+    pcl::PointCloud<pcl::PointXYZI>::Ptr pre_cloud_matched;
+    pcl::PointCloud<pcl::PointXYZI>::Ptr cur_cloud_matched;
 
     // for 3d points
     std::vector<cv::Point3f> brief_point_3d;
@@ -137,14 +136,11 @@ public:
     std::vector<cv::KeyPoint> search_orb_keypoints;
     cv::Mat search_orb_descriptors;
 
-    // for BoW query
-    // std::vector<cv::Mat> bow_descriptors;
-
 public:
     KeyFrame(double _time_stamp,
              int _index,
              const cv::Mat &_image_intensity,
-             const pcl::PointCloud<PointType>::Ptr _cloud)
+             const pcl::PointCloud<PointCloudXYZIRCR>::Ptr _cloud)
     {
         time_stamp = _time_stamp;
         index = _index;
@@ -163,20 +159,18 @@ public:
             computeSearchOrbPoint();
             #pragma omp section
             computeSearchBriefPoint();
-            #pragma omp section
-            // computeBoWPoint();
         }
 
         image_intensity.release();
         if(!DEBUG_IMAGE)
             image.release();
+
+        pre_cloud_matched.reset(new pcl::PointCloud<pcl::PointXYZI>);
+        cur_cloud_matched.reset(new pcl::PointCloud<pcl::PointXYZI>);
     }
 
     bool findConnection(KeyFrame* old_kf)
     {
-        // visualize ORB features on two matched images from DBoW2
-        // pubMatchedImages(&pub_bow_img, time_stamp, false, 1, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, search_orb_point_2d_uv, old_kf->search_orb_point_2d_uv);
-
         if (!USE_ORB && !USE_BRIEF)
         {
             std::cerr << "No descriptor is used!" << std::endl;
@@ -200,9 +194,9 @@ public:
 
             if ((int)good_matches.size() > MIN_LOOP_FEATURE_NUM)
             {
-                vector<uchar> status;
-                vector<cv::Point3f> matched_3d;
-                vector<cv::Point2f> matched_2d_cur, matched_2d_old, matched_2d_old_norm;
+                std::vector<uchar> status;
+                std::vector<cv::Point3f> matched_3d;
+                std::vector<cv::Point2f> matched_2d_cur, matched_2d_old, matched_2d_old_norm;
 
                 for (size_t i=0; i < good_matches.size(); i++)
                 {
@@ -215,7 +209,8 @@ public:
                     matched_2d_old_norm.push_back(old_kf->search_orb_point_2d_norm[old_index]);
                 }
 
-                // pubMatchedImages(&pub_prepnp_img, time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                if(DEBUG_IMAGE)
+                    showMatchedImages("orb before", time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
 
                 PnPRANSAC(matched_2d_old_norm, matched_3d, status);
                 reduceVector(matched_3d, status);
@@ -225,7 +220,13 @@ public:
 
                 if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM && distributionValidation(matched_2d_cur, matched_2d_old))
                 {
-                    // pubMatchedImages(&pub_match_img, time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                    if(DEBUG_IMAGE)
+                        showMatchedImages("orb after", time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                    
+                    //find corresponding 3D points
+                    findCorrespondPoints(matched_2d_cur, cur_cloud_matched);
+                    findCorrespondPoints(matched_2d_old, pre_cloud_matched);
+                    
                     return true;
                 }
             }
@@ -234,9 +235,9 @@ public:
         // BRIEF matching
         if (USE_BRIEF)
         {
-            vector<uchar> status;
-            vector<cv::Point3f> matched_3d;
-            vector<cv::Point2f> matched_2d_cur, matched_2d_old, matched_2d_old_norm;
+            std::vector<uchar> status;
+            std::vector<cv::Point3f> matched_3d;
+            std::vector<cv::Point2f> matched_2d_cur, matched_2d_old, matched_2d_old_norm;
 
             matched_3d = brief_point_3d;
             matched_2d_cur = brief_point_2d_uv;
@@ -247,7 +248,8 @@ public:
             reduceVector(matched_2d_old, status);
             reduceVector(matched_2d_old_norm, status);
 
-            // pubMatchedImages(&pub_prepnp_img, time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+            if(DEBUG_IMAGE)
+                showMatchedImages("brief before", time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
 
             if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM)
             {
@@ -260,13 +262,39 @@ public:
 
                 if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM && distributionValidation(matched_2d_cur, matched_2d_old))
                 {
-                    // pubMatchedImages(&pub_match_img, time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                    if(DEBUG_IMAGE)
+                        showMatchedImages("brief after", time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                    //find corresponding 3D points
+                    findCorrespondPoints(matched_2d_cur, cur_cloud_matched);
+                    findCorrespondPoints(matched_2d_old, pre_cloud_matched);
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    bool findCorrespondPoints(std::vector<cv::Point2f> matched_2d_points, pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud_in)
+    {
+        if (matched_2d_points.empty())
+            return false;
+
+        cloud_in->clear();
+        int size = matched_2d_points.size();
+        cloud_in->points.resize(size);
+        for(int i = 0; i < size; i++)
+        {
+            int col = matched_2d_points[i].x;
+            int row = matched_2d_points[i].y;
+            
+            pcl::PointXYZI pt;
+            pt.x = cloud->points[row * IMAGE_WIDTH + col].x;
+            pt.y = cloud->points[row * IMAGE_WIDTH + col].y;
+            pt.z = cloud->points[row * IMAGE_WIDTH + col].z;
+            pt.intensity = cloud->points[row * IMAGE_WIDTH + col].intensity;
+            cloud_in->points.push_back(pt);
+        }
     }
 
     void computeWindowOrbPoint()
@@ -336,28 +364,7 @@ public:
             briefExtractor(image_intensity, search_brief_keypoints, search_brief_descriptors);
         }
     }
-
-    void computeBoWPoint()
-    {
-        cv::Mat descriptors;
-        std::vector<cv::KeyPoint> keypoints;
-        cv::Ptr<cv::ORB> detector = cv::ORB::create(2500, 1.2f, 8, 1);
-        detector->detectAndCompute(image, MASK, keypoints, descriptors);
-
-        // bow_descriptors.resize(descriptors.rows);
-        // for (int i = 0; i < descriptors.rows; ++i)
-        //     bow_descriptors[i] = descriptors.row(i);
-
-        if (DEBUG_IMAGE)
-        {
-            cv::Mat imgShow;
-            cv::drawKeypoints(image_intensity, keypoints, imgShow, cv::Scalar::all(-1), cv::DrawMatchesFlags::DEFAULT );
-            cv::resize(imgShow, imgShow, cv::Size(), 2, 2);
-            cv::imshow("BOW Keypoints", imgShow );
-            cv::waitKey(10);
-        }
-    }
-
+ 
     int HammingDis(const BRIEF::bitset &a, const BRIEF::bitset &b)
     {
         BRIEF::bitset xor_of_bitset = a ^ b;
@@ -429,7 +436,7 @@ public:
         cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
 
         solvePnPRansac(matched_3d, matched_2d_old_norm, K, D, rvec, tvec, false, 100, 0.025, 0.99, inliers);
-
+        std::cout << "t:" << tvec.t() << std::endl;
         status.resize(matched_2d_old_norm.size(), 0);
         for( int i = 0; i < inliers.rows; i++)
         {
@@ -454,8 +461,8 @@ public:
         {
             int col_id = cvRound(in_point_2d_uv[i].x);
             int row_id = cvRound(in_point_2d_uv[i].y);
-            int index = row_id * IMAGE_WIDTH + col_id;
-            PointType *pi = &cloud->points[index];
+            int index = row_id * IMAGE_WIDTH + col_id;// have problem!!!
+            PointCloudXYZIRCR *pi = &cloud->points[index];
 
             cv::Point3f p_3d(0.f, 0.f, 0.f);
             cv::Point2f p_2d_n(0.f, 0.f);
@@ -551,8 +558,6 @@ public:
 
         search_orb_point_3d.clear(); search_orb_point_3d.shrink_to_fit();
         search_orb_keypoints.clear(); search_orb_keypoints.shrink_to_fit();
-
-        // bow_descriptors.clear(); bow_descriptors.shrink_to_fit();
     }
 };
 

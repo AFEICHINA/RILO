@@ -54,13 +54,17 @@ public:
         double fov_down = fov_down_deg/180 * M_PI;
         double fov = std::abs(fov_down) + std::abs(fov_up);
 
+        pointCloudOut->points.resize(pc_in->size());
         for(size_t i = 0; i < pc_in->size(); i++)
         {
             PointT pt = pc_in->points[i];
             double depth = std::sqrt(pt.x * pt.x + pt.y * pt.y + pt.z * pt.z);
-            if(depth < min_range || depth > max_range)
+            if(depth <= min_range || depth > max_range)
                 continue;
-            
+            if(pt.x == 0 || pt.y == 0 || pt.z == 0)
+                continue;
+            if(std::isnan(pt.x) || std::isnan(pt.y) || std::isnan(pt.z))
+                continue;
             double scan_x = pt.x;
             double scan_y = pt.y;
             double scan_z = pt.z;
@@ -71,6 +75,7 @@ public:
 
             double proj_x = 0.5 * (yaw/M_PI + 1.0);
             double proj_y = 1 - (pitch + std::abs(fov_down))/fov;
+            
             
             proj_x *= W;
             proj_y *= H;
@@ -95,10 +100,10 @@ public:
             p.row = proj_y;
             p.col = proj_x;
             p.range = depth;
-            pointCloudOut->push_back(p);
+            pointCloudOut->points[IMAGE_WIDTH * p.row + p.col] = p;
             
             rangeImg.at<uchar>(proj_y, proj_x) = (int)(255 * depth/max_range);
-            intensityImg.at<uchar>(proj_y, proj_x) = (int)pt.intensity;
+            intensityImg.at<uchar>(proj_y, proj_x) = (int)intensity;
         }
 
         return 1;

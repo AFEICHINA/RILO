@@ -13,6 +13,7 @@
 #include <pcl/filters/filter.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/crop_box.h> 
+#include <pcl/registration/icp.h>
 
 //opencv
 #include <opencv/cv.h>
@@ -54,9 +55,6 @@ extern int USE_ORB;
 extern int NUM_BRI_FEATURES;
 extern int NUM_ORB_FEATURES;
 extern int MIN_LOOP_FEATURE_NUM;
-extern int MIN_LOOP_SEARCH_GAP;
-extern double MIN_LOOP_SEARCH_TIME;
-extern float MIN_LOOP_BOW_TH;
 extern double SKIP_TIME;
 extern int NUM_THREADS;
 extern int DEBUG_IMAGE;

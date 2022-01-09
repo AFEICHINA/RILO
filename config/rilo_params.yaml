@@ -1,9 +1,11 @@
 %YAML:1.0
 
 # Cloud parameters
+start_frame: 0                 # start image id
+end_frame: 2000                # end image id
 image_width: 900               # image horitontal resolution
 image_height: 64               # image vertical resolution
-image_crop: 0                 # mask for blocking feature extraction; indoor/handheld=196-256; jackal=0 
+image_crop: 0                  # mask for blocking feature extraction; indoor/handheld=196-256; jackal=0 
 
 # Feature matching
 use_brief: 1                    # enabling flag for BRIEF feature 
@@ -12,10 +14,7 @@ num_bri_features: 200           # feature num for BRIEF
 num_orb_features: 500           # feature num for ORB
 
 # Loop settings
-min_loop_feature_num: 15        # minimum feature number threshold
-min_loop_search_gap: 50         # search keyframes older than x frames
-min_loop_search_time: 30        # search keyframes older than x seconds
-min_loop_bow_th: 0.015          # BOW search threshold
+min_loop_feature_num: 6         # minimum feature number threshold
 
 # CPU
 skip_time: 0.15                 # point cloud processing time interval
@@ -28,3 +27,7 @@ match_image_scale: 1.0          # debug image display size
 # Vocab file
 # vocabulary_file: "/config/orbvoc.dbow3"
 brief_pattern_file: "../config/brief_pattern.yml"
+
+# data path
+data_path: "/home/zhihui/projects/RILO/data/kitti_00/"
+# data_path: "/home/zhihui/projects/RILO/data/pcd/"
