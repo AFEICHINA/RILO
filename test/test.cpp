@@ -3,8 +3,13 @@
 #include "lidar_proj.hpp"
 #include "keyframe.hpp"
 #include "common.h"
+#include "viewer.h"
+
+#include <teaser/registration.h>
 
 #include <boost/format.hpp>
+
+Viewer view;
 
 std::string DATA_PATH;
 int START_FRAME;
@@ -23,6 +28,17 @@ int DEBUG_IMAGE;
 double MATCH_IMAGE_SCALE;
 cv::Mat MASK;
 BriefExtractor briefExtractor;
+
+void save_pcd(std::string save_path, pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_in)
+{
+    pcl::PointCloud<pcl::PointXYZI> cloud;
+    cloud = *cloud_in;
+    cloud.width    = cloud_in->size(); 
+    cloud.height   = 1; 
+    cloud.is_dense = false;
+    pcl::io::savePCDFileASCII (save_path, cloud);
+    std::cerr << "Saved " << cloud.points.size () << " data points to test_pcd.pcd." << std::endl;
+}
 
 int main(int argc, char* argv[])
 {
@@ -73,7 +89,7 @@ int main(int argc, char* argv[])
     
     for(int i = START_FRAME; i < END_FRAME; i++)
     {
-        printf("\n");
+        printf("\n frame [%d]\n", i);
         std::string fileName = DATA_PATH;
         boost::format fmt("%s%06d.pcd");
         fmt %fileName % i;
@@ -95,13 +111,14 @@ int main(int argc, char* argv[])
         intensity_img = proj_lidar.getIntensityImg();
         cv::imshow("range img", range_img);
         cv::imshow("intensity img", intensity_img);
-        cv::waitKey(0);
+        cv::waitKey(1);
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         double cloud_time = 0;
         
         KeyFrame* keyframe = new KeyFrame(cloud_time,
                                         global_frame_index,
+                                        intensity_img,
                                         range_img,
                                         proj_lidar.getPointCloudAfterProcess()); 
 
@@ -113,7 +130,6 @@ int main(int argc, char* argv[])
         }
         
         keyframe->findConnection(old_kf);
-        *old_kf = *keyframe;
         std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
         time_used =  std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2);
         std::cout << "find feature point pairs cost [" << time_used.count() * 1000 << "] ms" << std::endl;
@@ -122,26 +138,91 @@ int main(int argc, char* argv[])
         std::cout << "cur cloud matched: " << keyframe->cur_cloud_matched->size() << std::endl;
         std::cout << "pre cloud matched: " << keyframe->pre_cloud_matched->size() << std::endl;
 
+        if(0)
+        {
+            save_pcd("/home/zhihui/projects/RILO/results/cur_matched_cloud.pcd", keyframe->cur_cloud_matched);
+            save_pcd("/home/zhihui/projects/RILO/results/pre_matched_cloud.pcd", keyframe->pre_cloud_matched);
+        }
+
         // registration
         // frame to frame
-        pcl::IterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
-        icp.setInputSource(keyframe->cur_cloud_matched);
-        icp.setInputTarget(keyframe->pre_cloud_matched);
-        icp.setMaxCorrespondenceDistance(100);  
-        icp.setTransformationEpsilon(1e-10); 
-        icp.setEuclideanFitnessEpsilon(0.001); 
-        icp.setMaximumIterations(50);  
-        pcl::PointCloud<pcl::PointXYZI>::Ptr final(new pcl::PointCloud<pcl::PointXYZI>); 
-        icp.align(*final);
-        std::cout << "has converged:" << icp.hasConverged() 
-                  << " score: " << icp.getFitnessScore() << std::endl;
-        std::cout << "Tran: \n" << icp.getFinalTransformation() << std::endl;
+        std::chrono::steady_clock::time_point t4, t5;
+        t4 = std::chrono::steady_clock::now();
+        pcl::PointCloud<PointCloudXYZIRCR> src_tmp;
+        pcl::PointCloud<PointCloudXYZIRCR> tgt_tmp;
+        src_tmp.points.resize(keyframe->cur_cloud_matched->size());
+        tgt_tmp.points.resize(keyframe->cur_cloud_matched->size());
+        for(int i = 0; i < keyframe->cur_cloud_matched->size(); i++)
+        {
+            // PointCloudXYZIRCR pt_src;
+            src_tmp.points[i].x = keyframe->cur_cloud_matched->points[i].x;
+            src_tmp.points[i].y = keyframe->cur_cloud_matched->points[i].y;
+            src_tmp.points[i].z = keyframe->cur_cloud_matched->points[i].z;
 
+            tgt_tmp.points[i].x = keyframe->pre_cloud_matched->points[i].x;
+            tgt_tmp.points[i].y = keyframe->pre_cloud_matched->points[i].y;
+            tgt_tmp.points[i].z = keyframe->pre_cloud_matched->points[i].z;
+        }
+
+        int N = src_tmp.size();
+        // Convert the point cloud to Eigen
+        Eigen::Matrix<double, 3, Eigen::Dynamic> src(3, N);
+        Eigen::Matrix<double, 3, Eigen::Dynamic> tgt(3, N);
+        for (int i = 0; i < N; ++i)
+        {
+            src.col(i) << src_tmp.points[i].x, src_tmp.points[i].y, src_tmp.points[i].z;
+            tgt.col(i) << tgt_tmp.points[i].x, tgt_tmp.points[i].y, tgt_tmp.points[i].z;
+        }
+
+        // Run TEASER++ registration
+        // Prepare solver parameters
+        teaser::RobustRegistrationSolver::Params params;
+        params.noise_bound = 0.2;
+        params.cbar2 = 1.0;
+        params.estimate_scaling = false;
+        params.rotation_max_iterations = 100;
+        params.rotation_gnc_factor = 1.4;
+        params.rotation_estimation_algorithm =
+            teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::GNC_TLS;
+            // teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::FGR;
+        params.use_max_clique = true;
+        params.kcore_heuristic_threshold = 0.5;
+        params.rotation_cost_threshold = 0.005;
+
+        // Solve with TEASER++
+        teaser::RobustRegistrationSolver solver(params);
+        // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        solver.solve(src, tgt);
+        // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        auto solution = solver.getSolution();
+        std::vector<int> rot_inliers;
+        std::vector<int> trans_inliers;
+        rot_inliers = solver.getRotationInliers();
+        trans_inliers = solver.getTranslationInliers();
+        std::cout << "Inlier correspondences found. [" << rot_inliers.size() << "]   ["  << trans_inliers.size() << "] " <<std::endl;
         
+        Eigen::Matrix4d trans_matrix_ = Eigen::Matrix4d::Identity();
+        trans_matrix_.block(0, 0, 3, 3) = solution.rotation;
+        trans_matrix_.block(0, 3, 3, 1) = solution.translation;
+        std::cout << "trans:\n" << trans_matrix_ << std::endl;
 
+        t5 = std::chrono::steady_clock::now();
+        std::cout << "[TEASER++ Compute Time] taken (ms): "
+                << std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count() / 1000.0 << std::endl;
+
+        view.setPCDSource(*(keyframe->cloud));
+        view.setPCDTarget(*(old_kf->cloud));
+        view.setPCDMatchedPointPairs(src_tmp, tgt_tmp);
+
+        pcl::PointCloud<PointCloudXYZIRCR>::Ptr src_tranformed(new pcl::PointCloud<PointCloudXYZIRCR>);
+        pcl::transformPointCloud(*(keyframe->cloud), *src_tranformed, trans_matrix_);
+        view.setPCDTransformed(*src_tranformed);
+        view.updateMap();
+
+        *old_kf = *keyframe;
         keyframe->freeMemory();
-        if(keyframe)
-            delete keyframe;
+        old_kf->freeMemory();    
     }
 
     std::cout << "finished" << std::endl;

@@ -42,6 +42,7 @@
 #include <thread>
 #include <mutex>
 #include <cassert>
+#include <chrono>
 
 #include "ThirdParty/DVision/DVision.h"
 

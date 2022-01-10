@@ -102,6 +102,7 @@ public:
 
     cv::Mat image;
     cv::Mat image_intensity;
+    cv::Mat image_range;
     cv::Mat thumbnail;
     pcl::PointCloud<PointCloudXYZIRCR>::Ptr cloud;
 
@@ -140,6 +141,7 @@ public:
     KeyFrame(double _time_stamp,
              int _index,
              const cv::Mat &_image_intensity,
+             const cv::Mat &_image_range,
              const pcl::PointCloud<PointCloudXYZIRCR>::Ptr _cloud)
     {
         time_stamp = _time_stamp;
@@ -147,6 +149,7 @@ public:
         cloud = _cloud;
         image = _image_intensity.clone();
         image_intensity = _image_intensity.clone();
+        image_range = _image_range.clone();
         cv::resize(image, thumbnail, cv::Size(), MATCH_IMAGE_SCALE, MATCH_IMAGE_SCALE);
 
         #pragma omp parallel sections num_threads(NUM_THREADS)
@@ -169,6 +172,48 @@ public:
         cur_cloud_matched.reset(new pcl::PointCloud<pcl::PointXYZI>);
     }
 
+    KeyFrame& operator = (const KeyFrame &kf) // copy construct funciton
+    {
+        time_stamp = kf.time_stamp;
+        index = kf.index;
+
+        kf.image.copyTo(image);
+        kf.image_intensity.copyTo(image_intensity);
+        kf.image_range.copyTo(image_range);
+        kf.thumbnail.copyTo(thumbnail);
+        *cloud = *(kf.cloud);
+
+        *pre_cloud_matched = *(kf.pre_cloud_matched);
+        *cur_cloud_matched = *(kf.cur_cloud_matched);
+
+        // for 3d points
+        brief_point_3d = kf.brief_point_3d;
+        brief_point_2d_uv = kf.brief_point_2d_uv;
+        brief_point_2d_norm = kf.brief_point_2d_norm;
+        brief_window_keypoints = kf.brief_window_keypoints;
+        brief_window_descriptors = kf.brief_window_descriptors;
+
+        // for search 3d points' correspondences
+        search_brief_point_3d = kf.search_brief_point_3d;
+        search_brief_point_2d_uv = kf.search_brief_point_2d_uv;
+        search_brief_point_2d_norm = kf.search_brief_point_2d_norm;
+        search_brief_keypoints = kf.search_brief_keypoints;
+        search_brief_descriptors = kf.search_brief_descriptors;
+
+        // for ORB
+        orb_point_3d = kf.orb_point_3d;
+        orb_point_2d_uv = kf.orb_point_2d_uv;
+        orb_point_2d_norm = kf.orb_point_2d_norm;
+        orb_window_keypoints = kf.orb_window_keypoints;
+        kf.orb_window_descriptors.copyTo(orb_window_descriptors);
+
+        search_orb_point_3d = kf.search_orb_point_3d;
+        search_orb_point_2d_uv = kf.search_orb_point_2d_uv;
+        search_orb_point_2d_norm = kf.search_orb_point_2d_norm;
+        search_orb_keypoints = kf.search_orb_keypoints;
+        kf.search_orb_descriptors.copyTo(search_orb_descriptors);
+    }
+
     bool findConnection(KeyFrame* old_kf)
     {
         if (!USE_ORB && !USE_BRIEF)
@@ -177,6 +222,102 @@ public:
             return false;
         }
         
+        // // ORB matching
+        // if (USE_ORB)
+        // {
+        //     vector<cv::DMatch> matches, good_matches; 
+        //     cv::BFMatcher matcher = cv::BFMatcher(cv::NORM_HAMMING); // https://docs.opencv.org/3.3.1/d3/da1/classcv_1_1BFMatcher.html
+        //     matcher.match(orb_window_descriptors, old_kf->search_orb_descriptors, matches);
+
+        //     std::sort(matches.begin(), matches.end());
+        //     for (size_t i = 0; i < matches.size(); ++i)
+        //     {
+        //         good_matches.push_back(matches[i]);
+        //         if (matches[i].distance > matches[0].distance * 2)
+        //             break;
+        //     }
+
+        //     if ((int)good_matches.size() > MIN_LOOP_FEATURE_NUM)
+        //     {
+        //         std::vector<uchar> status;
+        //         std::vector<cv::Point3f> matched_3d;
+        //         std::vector<cv::Point2f> matched_2d_cur, matched_2d_old, matched_2d_old_norm;
+
+        //         for (size_t i=0; i < good_matches.size(); i++)
+        //         {
+        //             int cur_index = good_matches[i].queryIdx;
+        //             matched_3d.push_back(orb_point_3d[cur_index]);
+        //             matched_2d_cur.push_back(orb_point_2d_uv[cur_index]);
+                    
+        //             int old_index = good_matches[i].trainIdx;
+        //             matched_2d_old.push_back(old_kf->search_orb_point_2d_uv[old_index]);
+        //             matched_2d_old_norm.push_back(old_kf->search_orb_point_2d_norm[old_index]);
+        //         }
+
+        //         if(DEBUG_IMAGE)
+        //             showMatchedImages("orb before", time_stamp, true, 3, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+
+        //         PnPRANSAC(matched_2d_old_norm, matched_3d, status);
+        //         reduceVector(matched_3d, status);
+        //         reduceVector(matched_2d_cur, status);
+        //         reduceVector(matched_2d_old, status);
+        //         reduceVector(matched_2d_old_norm, status);
+
+        //         if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM && distributionValidation(matched_2d_cur, matched_2d_old))
+        //         {
+        //             if(DEBUG_IMAGE)
+        //                 showMatchedImages("orb after", time_stamp, true, 3, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                    
+        //             //find corresponding 3D points
+        //             findCorrespondPoints(matched_2d_cur, cur_cloud_matched, cloud);
+        //             findCorrespondPoints(matched_2d_old, pre_cloud_matched, old_kf->cloud);
+                    
+        //             return true;
+        //         }
+        //     }
+        // }
+
+        // BRIEF matching
+        if (USE_BRIEF)
+        {
+            std::vector<uchar> status;
+            std::vector<cv::Point3f> matched_3d;
+            std::vector<cv::Point2f> matched_2d_cur, matched_2d_old, matched_2d_old_norm;
+
+            matched_3d = brief_point_3d;
+            matched_2d_cur = brief_point_2d_uv;
+
+            searchByBRIEFDes(matched_2d_old, matched_2d_old_norm, status, brief_window_descriptors, old_kf->search_brief_descriptors, old_kf->search_brief_point_2d_uv, old_kf->search_brief_point_2d_norm);
+            reduceVector(matched_3d, status);
+            reduceVector(matched_2d_cur, status);
+            reduceVector(matched_2d_old, status);
+            reduceVector(matched_2d_old_norm, status);
+
+            if(DEBUG_IMAGE)
+                showMatchedImages("brief before", time_stamp, true, 3, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+
+            if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM)
+            {
+                status.clear();
+                PnPRANSAC(matched_2d_old_norm, matched_3d, status);
+                reduceVector(matched_3d, status);
+                reduceVector(matched_2d_cur, status);
+                reduceVector(matched_2d_old, status);
+                reduceVector(matched_2d_old_norm, status);
+
+                if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM && distributionValidation(matched_2d_cur, matched_2d_old))
+                {
+                    if(DEBUG_IMAGE)
+                        showMatchedImages("brief after", time_stamp, true, 3, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                    //find corresponding 3D points
+                    findCorrespondPoints(matched_2d_cur, cur_cloud_matched, cloud);
+                    findCorrespondPoints(matched_2d_old, pre_cloud_matched, old_kf->cloud);
+
+                    return true;
+                }
+            }
+        }
+
         // ORB matching
         if (USE_ORB)
         {
@@ -210,7 +351,7 @@ public:
                 }
 
                 if(DEBUG_IMAGE)
-                    showMatchedImages("orb before", time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                    showMatchedImages("orb before", time_stamp, true, 3, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
 
                 PnPRANSAC(matched_2d_old_norm, matched_3d, status);
                 reduceVector(matched_3d, status);
@@ -221,52 +362,12 @@ public:
                 if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM && distributionValidation(matched_2d_cur, matched_2d_old))
                 {
                     if(DEBUG_IMAGE)
-                        showMatchedImages("orb after", time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
+                        showMatchedImages("orb after", time_stamp, true, 3, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
                     
                     //find corresponding 3D points
-                    findCorrespondPoints(matched_2d_cur, cur_cloud_matched);
-                    findCorrespondPoints(matched_2d_old, pre_cloud_matched);
+                    findCorrespondPoints(matched_2d_cur, cur_cloud_matched, cloud);
+                    findCorrespondPoints(matched_2d_old, pre_cloud_matched, old_kf->cloud);
                     
-                    return true;
-                }
-            }
-        }
-
-        // BRIEF matching
-        if (USE_BRIEF)
-        {
-            std::vector<uchar> status;
-            std::vector<cv::Point3f> matched_3d;
-            std::vector<cv::Point2f> matched_2d_cur, matched_2d_old, matched_2d_old_norm;
-
-            matched_3d = brief_point_3d;
-            matched_2d_cur = brief_point_2d_uv;
-
-            searchByBRIEFDes(matched_2d_old, matched_2d_old_norm, status, brief_window_descriptors, old_kf->search_brief_descriptors, old_kf->search_brief_point_2d_uv, old_kf->search_brief_point_2d_norm);
-            reduceVector(matched_3d, status);
-            reduceVector(matched_2d_cur, status);
-            reduceVector(matched_2d_old, status);
-            reduceVector(matched_2d_old_norm, status);
-
-            if(DEBUG_IMAGE)
-                showMatchedImages("brief before", time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
-
-            if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM)
-            {
-                status.clear();
-                PnPRANSAC(matched_2d_old_norm, matched_3d, status);
-                reduceVector(matched_3d, status);
-                reduceVector(matched_2d_cur, status);
-                reduceVector(matched_2d_old, status);
-                reduceVector(matched_2d_old_norm, status);
-
-                if ((int)matched_2d_cur.size() > MIN_LOOP_FEATURE_NUM && distributionValidation(matched_2d_cur, matched_2d_old))
-                {
-                    if(DEBUG_IMAGE)
-                        showMatchedImages("brief after", time_stamp, true, 5, cv::Scalar(0, 255, 0), index, old_kf->index, thumbnail, old_kf->thumbnail, matched_2d_cur, matched_2d_old);
-                    //find corresponding 3D points
-                    findCorrespondPoints(matched_2d_cur, cur_cloud_matched);
-                    findCorrespondPoints(matched_2d_old, pre_cloud_matched);
                     return true;
                 }
             }
@@ -275,7 +376,9 @@ public:
         return false;
     }
 
-    bool findCorrespondPoints(std::vector<cv::Point2f> matched_2d_points, pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud_in)
+    bool findCorrespondPoints(std::vector<cv::Point2f> matched_2d_points, 
+                                pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud_in, 
+                                pcl::PointCloud<PointCloudXYZIRCR>::Ptr cloud_full)
     {
         if (matched_2d_points.empty())
             return false;
@@ -289,10 +392,10 @@ public:
             int row = matched_2d_points[i].y;
             
             pcl::PointXYZI pt;
-            pt.x = cloud->points[row * IMAGE_WIDTH + col].x;
-            pt.y = cloud->points[row * IMAGE_WIDTH + col].y;
-            pt.z = cloud->points[row * IMAGE_WIDTH + col].z;
-            pt.intensity = cloud->points[row * IMAGE_WIDTH + col].intensity;
+            pt.x = cloud_full->points[row * IMAGE_WIDTH + col].x;
+            pt.y = cloud_full->points[row * IMAGE_WIDTH + col].y;
+            pt.z = cloud_full->points[row * IMAGE_WIDTH + col].z;
+            pt.intensity = cloud_full->points[row * IMAGE_WIDTH + col].intensity;
             cloud_in->points.push_back(pt);
         }
     }
