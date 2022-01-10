@@ -63,7 +63,7 @@ void Viewer::threadLoop()
     pangolin::Var<bool> menuShowPCDSrc("ui.menuShowPCDSrc", true, true);     //设置一个按钮，默认值为false，最后一个false表示按钮形式
     pangolin::Var<bool> menuShowPCDTgt("ui.menuShowPCDTgt", true, true);
     pangolin::Var<bool> menuShowPointMatched("ui.menuShowPointMatched", true, true);     //设置一个按钮，默认值为false，最后一个false表示按钮形式
-    pangolin::Var<bool> menuShowPCDTransformed("ui.menuShowPCDTransformed", false, true);
+    pangolin::Var<bool> menuShowPCDTransformed("ui.menuShowPCDTransformed", true, true);
 
     // pangolin::Var<double> a_double("ui.A_Double", 3, 0, 5);//设置一个double的、可拖动变换值的玩意(不知道咋形容)！
 

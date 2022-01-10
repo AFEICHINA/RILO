@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
     
     for(int i = START_FRAME; i < END_FRAME; i++)
     {
-        printf("\n frame [%d]\n", i);
+        printf("\nframe [%d]\n", i);
         std::string fileName = DATA_PATH;
         boost::format fmt("%s%06d.pcd");
         fmt %fileName % i;
@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
         intensity_img = proj_lidar.getIntensityImg();
         cv::imshow("range img", range_img);
         cv::imshow("intensity img", intensity_img);
-        cv::waitKey(1);
+        cv::waitKey(0);
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         double cloud_time = 0;
@@ -119,7 +119,6 @@ int main(int argc, char* argv[])
         KeyFrame* keyframe = new KeyFrame(cloud_time,
                                         global_frame_index,
                                         intensity_img,
-                                        range_img,
                                         proj_lidar.getPointCloudAfterProcess()); 
 
         if(global_frame_index == 0)
@@ -135,11 +134,10 @@ int main(int argc, char* argv[])
         std::cout << "find feature point pairs cost [" << time_used.count() * 1000 << "] ms" << std::endl;
         global_frame_index++;
 
-        std::cout << "cur cloud matched: " << keyframe->cur_cloud_matched->size() << std::endl;
-        std::cout << "pre cloud matched: " << keyframe->pre_cloud_matched->size() << std::endl;
-
         if(0)
         {
+            std::cout << "cur cloud matched: " << keyframe->cur_cloud_matched->size() << std::endl;
+            std::cout << "pre cloud matched: " << keyframe->pre_cloud_matched->size() << std::endl;
             save_pcd("/home/zhihui/projects/RILO/results/cur_matched_cloud.pcd", keyframe->cur_cloud_matched);
             save_pcd("/home/zhihui/projects/RILO/results/pre_matched_cloud.pcd", keyframe->pre_cloud_matched);
         }
@@ -191,16 +189,9 @@ int main(int argc, char* argv[])
 
         // Solve with TEASER++
         teaser::RobustRegistrationSolver solver(params);
-        // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         solver.solve(src, tgt);
-        // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
         auto solution = solver.getSolution();
-        std::vector<int> rot_inliers;
-        std::vector<int> trans_inliers;
-        rot_inliers = solver.getRotationInliers();
-        trans_inliers = solver.getTranslationInliers();
-        std::cout << "Inlier correspondences found. [" << rot_inliers.size() << "]   ["  << trans_inliers.size() << "] " <<std::endl;
         
         Eigen::Matrix4d trans_matrix_ = Eigen::Matrix4d::Identity();
         trans_matrix_.block(0, 0, 3, 3) = solution.rotation;
