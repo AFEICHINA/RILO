@@ -1,10 +1,14 @@
 %YAML:1.0
 
 # Cloud parameters
-start_frame: 0                 # start image id
-end_frame: 2000                # end image id
+start_frame: 0                # start image id
+end_frame: 1000                # end image id
 image_width: 900               # image horitontal resolution
 image_height: 64               # image vertical resolution
+fov_up_deg: 3.0                #
+fov_down_deg: -25.0            #
+max_range: 200                 #
+min_range: 0                   #
 image_crop: 0                  # mask for blocking feature extraction; indoor/handheld=196-256; jackal=0 
 
 # Feature matching
@@ -14,7 +18,7 @@ num_bri_features: 200           # feature num for BRIEF
 num_orb_features: 500           # feature num for ORB
 
 # Loop settings
-min_loop_feature_num: 6         # minimum feature number threshold
+min_loop_feature_num: 10         # minimum feature number threshold
 
 # CPU
 skip_time: 0.15                 # point cloud processing time interval

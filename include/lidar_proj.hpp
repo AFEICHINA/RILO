@@ -74,8 +74,7 @@ public:
             double pitch = asin(scan_z/depth);
 
             double proj_x = 0.5 * (yaw/M_PI + 1.0);
-            double proj_y = 1 - (pitch + std::abs(fov_down))/fov;
-            
+            double proj_y = 1 - (pitch + std::abs(fov_down))/fov; 
             
             proj_x *= W;
             proj_y *= H;
@@ -104,6 +103,15 @@ public:
             
             rangeImg.at<uchar>(proj_y, proj_x) = (int)(255 * depth/max_range);
             intensityImg.at<uchar>(proj_y, proj_x) = (int)intensity;
+        }
+        
+        // normal image
+        for(size_t i = 0; i < pc_in->size(); i++ )
+        {
+            if(1)
+            {
+
+            }
         }
 
         return 1;

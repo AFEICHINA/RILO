@@ -13,15 +13,11 @@ Viewer::Viewer()
 
 Viewer::~Viewer()
 {
-    std::cout << "1"<<std::endl;
     if(viewer_thread_.joinable())
     {
-        std::cout << "2"<<std::endl;
         viewer_running_ = false;
         viewer_thread_.join();
-        std::cout << "3"<<std::endl;
     }
-    std::cout << "4"<<std::endl;
 }
 
 void Viewer::close()
@@ -47,7 +43,7 @@ void Viewer::threadLoop()
 
     pangolin::OpenGlRenderState vis_camera(
         pangolin::ProjectionMatrix(1024, 768, 400, 400, 512, 384, 0.1, 1000),
-        pangolin::ModelViewLookAt(-0, 0, 30, 0, 0, 0, 0.0, 1.0, 0.0));
+        pangolin::ModelViewLookAt(-0, 0, 60, 0, 0, 0, 0.0, 1.0, 0.0));
 
     // Add named OpenGL viewport to window and provide 3D Handler
     pangolin::View &vis_display =
@@ -184,7 +180,7 @@ void Viewer::drawLines(pcl::PointCloud<PointType> &pcd_src_mathced,
 {
     glPointSize(10);
     glBegin(GL_POINTS);
-    for (int i = 0; i < pcd_src_mathced.points.size(); i++)
+    for (size_t i = 0; i < pcd_src_mathced.points.size(); i++)
     {
         glColor3f(color[0], color[1], color[2]);
         glVertex3d(pcd_src_mathced[i].x, pcd_src_mathced[i].y, pcd_src_mathced[i].z);
@@ -194,7 +190,7 @@ void Viewer::drawLines(pcl::PointCloud<PointType> &pcd_src_mathced,
 
     glLineWidth(5);//设置线宽
     glBegin(GL_LINES);
-    for(int i = 0; i < pcd_src_mathced.points.size(); i++){
+    for(size_t i = 0; i < pcd_src_mathced.points.size(); i++){
         glColor3f(color[0], color[1], color[2]);  
         glVertex3f(pcd_src_mathced[i].x, pcd_src_mathced[i].y, pcd_src_mathced[i].z); 
         glVertex3f(pcd_tgt_mathced[i].x, pcd_tgt_mathced[i].y, pcd_tgt_mathced[i].z); 
