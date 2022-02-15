@@ -46,6 +46,12 @@ public:
                         double fov_up_deg = 3.0, double fov_down_deg = -25.0, 
                         double max_range = 50, double min_range = 0)
     {
+        int direction[9][2] = {{0, 1}, {0, -1}, {-1, 0}, 
+                                {1, 0}, {0, 0}, {-1, -1}, 
+                                {-1, 1}, {1, -1}, {1, 1}};
+        // int direction[5][2] = {{0, 1}, {0, -1}, {-1, 0}, 
+        //                         {1, 0}, {0, 0}};
+
         rangeImg = cv::Mat::zeros(H, W, CV_8UC1);
         intensityImg = cv::Mat::zeros(H, W, CV_8UC1);
         normalImg = cv::Mat::zeros(H, W, CV_8UC3);
@@ -104,23 +110,45 @@ public:
             rangeImg.at<uchar>(proj_y, proj_x) = (int)(255 * depth/max_range);
             intensityImg.at<uchar>(proj_y, proj_x) = (int)intensity;
         }
-        
-        // normal image
-        for(size_t i = 0; i < pc_in->size(); i++ )
-        {
-            if(1)
-            {
 
+        // normal image
+        for(size_t i = 0; i < pointCloudOut->size(); i++)
+        {
+            auto pt = pointCloudOut->points[i];
+            int u = pt.row; 
+            int v = pt.col;
+
+            if(u < 1 || u > H - 1 || v < 1 || v > W - 1)
+            {
+                normalImg.at<cv::Vec3b>(u, v) == cv::Vec3b(0, 0, 0);
+                continue;
             }
+
+            Eigen::Matrix<double, 9, 3> matA0;
+            Eigen::Matrix<double, 9, 1> matB0 = -1 * Eigen::Matrix<double, 9, 1>::Ones();
+            for(int j = 0; j < 9; j++)
+            {
+                int index = IMAGE_WIDTH * (u + direction[j][0]) + v + direction[j][1];
+                auto p = pointCloudOut->points[index];
+                matA0(j, 0) = p.x;
+                matA0(j, 1) = p.y;
+                matA0(j, 2) = p.z;
+            }
+            // find the norm of plane
+            Eigen::Vector3d norm = matA0.colPivHouseholderQr().solve(matB0);
+            norm.normalize();
+
+            int b = 0, g = 0, r = 0;
+            b = (1 + norm.x()) * 127;
+            g = (1 + norm.y()) * 127;
+            r = (1 + norm.z()) * 127;
+            normalImg.at<cv::Vec3b>(u, v)[0] = b;
+            normalImg.at<cv::Vec3b>(u, v)[1] = g;
+            normalImg.at<cv::Vec3b>(u, v)[2] = r;
         }
 
         return 1;
     }
-
-    bool generateNormalMap()
-    {  
-        return 1; 
-    } 
 
 private:
 

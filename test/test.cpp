@@ -110,6 +110,7 @@ int main(int argc, char* argv[])
         std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
         cv::Mat range_img;
         cv::Mat intensity_img;
+        cv::Mat normal_img;
         ProjLidar2Img<PointType> proj_lidar;
         proj_lidar.rangeProjection(cloud, IMAGE_HEIGHT, IMAGE_WIDTH, FOV_UP_DEG, FOV_DOWN_DEG, MAX_RANGE, MIN_RANGE);
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
@@ -118,8 +119,10 @@ int main(int argc, char* argv[])
         
         range_img = proj_lidar.getRangeImg();
         intensity_img = proj_lidar.getIntensityImg();
+        normal_img = proj_lidar.getNormalImg();
         // cv::imshow("range img", range_img);
         cv::imshow("intensity img", intensity_img);
+        cv::imshow("normal img", normal_img);
         cv::waitKey(10);
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
