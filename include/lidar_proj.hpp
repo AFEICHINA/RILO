@@ -49,8 +49,6 @@ public:
         int direction[9][2] = {{0, 1}, {0, -1}, {-1, 0}, 
                                 {1, 0}, {0, 0}, {-1, -1}, 
                                 {-1, 1}, {1, -1}, {1, 1}};
-        // int direction[5][2] = {{0, 1}, {0, -1}, {-1, 0}, 
-        //                         {1, 0}, {0, 0}};
 
         rangeImg = cv::Mat::zeros(H, W, CV_8UC1);
         intensityImg = cv::Mat::zeros(H, W, CV_8UC1);
@@ -123,10 +121,11 @@ public:
                 normalImg.at<cv::Vec3b>(u, v) == cv::Vec3b(0, 0, 0);
                 continue;
             }
-
-            Eigen::Matrix<double, 9, 3> matA0;
-            Eigen::Matrix<double, 9, 1> matB0 = -1 * Eigen::Matrix<double, 9, 1>::Ones();
-            for(int j = 0; j < 9; j++)
+            
+            const int n = 9;
+            Eigen::Matrix<double, n, 3> matA0;
+            Eigen::Matrix<double, n, 1> matB0 = -1 * Eigen::Matrix<double, n, 1>::Ones();
+            for(int j = 0; j < n; j++)
             {
                 int index = IMAGE_WIDTH * (u + direction[j][0]) + v + direction[j][1];
                 auto p = pointCloudOut->points[index];

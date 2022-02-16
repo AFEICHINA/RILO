@@ -25,7 +25,7 @@ skip_time: 0.15                 # point cloud processing time interval
 num_threads: 4                  # CPU thread number
 
 # Visualization
-debug_image: 1                  # debug flag (warning: uses massive memory)
+debug_image: 0                  # debug flag (warning: uses massive memory)
 match_image_scale: 1.0          # debug image display size
 
 # Vocab file

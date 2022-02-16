@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
         // cv::imshow("range img", range_img);
         cv::imshow("intensity img", intensity_img);
         cv::imshow("normal img", normal_img);
-        cv::waitKey(10);
+        cv::waitKey(0);
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         double cloud_time = 0;
